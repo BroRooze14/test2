@@ -18,7 +18,9 @@ namespace randomtext {
     export function randomCharacter(characters: string): string {
         if (characters === undefined || characters === null || characters.length == 0) {
             qoll.report("Character set is empty.")
-            return ""
+            // A space, and not empty text: an empty text cannot be handed to
+            // the runtime and would break whatever block uses the result.
+            return " "
         }
         if (characters.length == 1) return characters
         const index = Math.randomRange(0, characters.length - 1)

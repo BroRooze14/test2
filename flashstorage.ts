@@ -31,7 +31,10 @@ namespace flashstorage {
     export function createFlashVariable(name: string): string {
         if (name === undefined || name === null || name.length == 0) {
             qoll.report("Flash variable name cannot be empty.")
-            return ""
+            // A space, and not empty text: an empty text cannot be handed to
+            // the runtime. keyFor() refuses a name without usable characters,
+            // so this never reaches flash memory.
+            return " "
         }
         return name
     }
@@ -141,13 +144,19 @@ namespace flashstorage {
         }
 
         let key = KEY_PREFIX
+        let usable = 0
         for (let i = 0; i < raw.length && i < MAX_KEY_LENGTH; i++) {
             const code = raw.charCodeAt(i)
             const allowed = (code >= 97 && code <= 122)
                 || (code >= 65 && code <= 90)
                 || (code >= 48 && code <= 57)
                 || code == 95
+            if (allowed) usable++
             key += allowed ? raw.charAt(i) : "_"
+        }
+        if (usable == 0) {
+            qoll.report("Flash variable name needs a letter, a digit or _.")
+            return ""
         }
         return key
     }

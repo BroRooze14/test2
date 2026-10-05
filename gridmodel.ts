@@ -9,11 +9,28 @@ namespace qoll {
     /** Text that is shown for a cell that holds no value. */
     const EMPTY_CELL = " "
 
+    /**
+     * Turns a number into text.
+     *
+     * The space in front is there on purpose. pxt compiles the empty string
+     * literal in `"" + value` into a call that crashes, because the empty
+     * string is passed to the runtime without a value table. So the text is
+     * built with a space in front and the space is removed again afterwards.
+     * @param value the number to turn into text
+     */
+    function numberText(value: number): string {
+        const padded = " " + value
+        let out = ""
+        for (let i = 1; i < padded.length; i++) out += padded.charAt(i)
+        return out
+    }
+
     /** Turns a value into the text that is printed for it. */
     export function textOf(value: any): string {
         if (value === undefined || value === null) return "null"
         if (typeof value === "string") return value
-        if (typeof value === "number" || typeof value === "boolean") return "" + value
+        if (typeof value === "number") return numberText(value)
+        if (typeof value === "boolean") return value ? "true" : "false"
         if (value instanceof Grid) return "[grid]"
         if (Array.isArray(value)) return JSON.stringify(value)
         return "[object]"
@@ -25,7 +42,11 @@ namespace qoll {
      */
     export function cellText(value: any): string {
         if (value === undefined || value === null) return EMPTY_CELL
-        return textOf(value)
+        const text = textOf(value)
+        // A cell that holds empty text is shown as a space too: an empty text
+        // cannot be handed to the runtime, so it would break the printing.
+        if (!text) return EMPTY_CELL
+        return text
     }
 
     /** Reads a size setting; missing, null and negative sizes become 0. */

@@ -1,0 +1,28 @@
+{
+    "name": "qollibraries",
+    "description": "Quality of Life Libraries (QoLLibraries): grids, random character and true/false, serial printing of grids/arrays and flash storage for MakeCode for the micro:bit.",
+    "license": "MIT",
+    "version": "1.0.0",
+    "dependencies": {
+        "core": "*",
+        "settings": "*"
+    },
+    "files": [
+        "README.md",
+        "LICENSE",
+        "main.ts",
+        "errors.ts",
+        "gridmodel.ts",
+        "grids.ts",
+        "flashstorage.ts",
+        "randomcharacter.ts",
+        "randomboolean.ts",
+        "variables.ts",
+        "serialprint.ts"
+    ],
+    "public": true,
+    "supportedTargets": [
+        "microbit"
+    ],
+    "preferredEditor": "tsprj"
+}

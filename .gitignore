@@ -1,0 +1,11 @@
+built
+.built
+node_modules
+pxt_modules
+yotta_modules
+yotta_targets
+projects
+*.db
+*.tgz
+.DS_Store
+.freebuff/

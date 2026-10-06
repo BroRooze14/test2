@@ -28,7 +28,7 @@ namespace grids {
      * the problem on the terminal when the variable does not hold a grid.
      */
     function resolve(value: any): GridRef {
-        if (value instanceof qoll.Grid) return new GridRef(value, "")
+        if (qoll.isGrid(value)) return new GridRef(value, "")
 
         if (value === undefined || value === null) {
             qoll.report("Selected variable is empty. Set it to a grid first.")
@@ -39,7 +39,7 @@ namespace grids {
             const key = flashstorage.keyFor(value)
             if (!key) return null
             const stored = flashstorage.readValue(key)
-            if (stored instanceof qoll.Grid) return new GridRef(stored, key)
+            if (qoll.isGrid(stored)) return new GridRef(stored, key)
             qoll.report("Selected variable does not hold a grid.")
             return null
         }

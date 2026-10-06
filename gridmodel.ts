@@ -9,6 +9,9 @@ namespace qoll {
     /** Text that is shown for a cell that holds no value. */
     const EMPTY_CELL = " "
 
+    /** Marker written into every grid, so grids can be told apart from other objects. */
+    const GRID_TYPE_TAG = "grid"
+
     /**
      * Turns a number into text.
      *
@@ -31,7 +34,7 @@ namespace qoll {
         if (typeof value === "string") return value
         if (typeof value === "number") return numberText(value)
         if (typeof value === "boolean") return value ? "true" : "false"
-        if (value instanceof Grid) return "[grid]"
+        if (isGrid(value)) return "[grid]"
         if (Array.isArray(value)) return JSON.stringify(value)
         return "[object]"
     }
@@ -57,6 +60,20 @@ namespace qoll {
     }
 
     /**
+     * True when the value is a grid.
+     *
+     * instanceof is not used here on purpose: values that come back from
+     * flash memory are plain objects without a class table, and asking such
+     * an object for its class table crashes the runtime instead of simply
+     * answering false.
+     * @param value the value to check
+     */
+    export function isGrid(value: any): boolean {
+        if (!value) return false
+        return typeof value === "object" && value.gridType == GRID_TYPE_TAG
+    }
+
+    /**
      * A two dimensional grid.
      *
      * The grid grows automatically when a cell outside of the current size is
@@ -79,6 +96,8 @@ namespace qoll {
         defaultHeight: number
         /** Value of cells that were never written, null when no default was set. */
         defaultValue: any
+        /** Marker that marks this object as a grid. Not part of the saved data. */
+        gridType: string
 
         /**
          * Creates a grid.
@@ -94,6 +113,7 @@ namespace qoll {
             this.defaultWidth = sizeOf(defaultWidth)
             this.defaultHeight = sizeOf(defaultHeight)
             this.defaultValue = defaultValue === undefined || defaultValue === null ? null : defaultValue
+            this.gridType = GRID_TYPE_TAG
             this.cells = []
             this.width = 0
             this.height = 0
@@ -219,8 +239,8 @@ namespace qoll {
     /**
      * Turns a grid into a plain object so it can be written to flash memory.
      */
-    export function gridToPlain(grid: Grid): any {
-        return {
+    export function gridToPlain(grid: any): any {
+        if (isGrid(grid)) return {
             maxWidth: grid.maxWidth,
             maxHeight: grid.maxHeight,
             defaultWidth: grid.defaultWidth,
@@ -230,11 +250,16 @@ namespace qoll {
             height: grid.height,
             cells: grid.cells
         }
+        return null
     }
 
     /**
      * Rebuilds a grid from the plain object that was read back from flash
      * memory. Damaged data is reported on the terminal and repaired.
+     *
+     * The cells are copied one by one into a real array. The data that comes
+     * back from flash memory is a plain list made by JSON.parse, and such a
+     * list must not be kept as the grid's cell storage.
      */
     export function gridFromPlain(raw: any): Grid {
         if (raw === undefined || raw === null || typeof raw !== "object") {
@@ -249,7 +274,8 @@ namespace qoll {
         if (w > 0 && h > 0 && Array.isArray(raw.cells) && raw.cells.length == w * h) {
             grid.width = w
             grid.height = h
-            grid.cells = raw.cells
+            grid.cells = []
+            for (let i = 0; i < raw.cells.length; i++) grid.cells.push(raw.cells[i])
         } else if (w > 0 && h > 0) {
             report("Stored grid data was damaged and has been repaired.")
             grid.resizeTo(w, h)

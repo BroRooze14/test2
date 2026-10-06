@@ -28,7 +28,7 @@ namespace qollvars {
             return
         }
 
-        if (variable instanceof qoll.Grid) {
+        if (qoll.isGrid(variable)) {
             variable.reset()
             return
         }

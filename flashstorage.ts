@@ -221,7 +221,7 @@ namespace flashstorage {
         if (typeof value === "boolean") return { kind: "boolean", body: value }
         if (typeof value === "number") return { kind: "number", body: value }
         if (typeof value === "string") return { kind: "text", body: value }
-        if (value instanceof qoll.Grid) return { kind: "grid", body: qoll.gridToPlain(value) }
+        if (qoll.isGrid(value)) return { kind: "grid", body: qoll.gridToPlain(value) }
         if (Array.isArray(value)) return { kind: "array", body: value }
         qoll.report("This value cannot be stored in flash memory.")
         return { kind: "empty" }

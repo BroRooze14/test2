@@ -24,19 +24,18 @@ Every feature lives in its own file (no giant `main.ts`):
 
 | block | what it does |
 |-------|--------------|
-| `create grid` | creates a new grid. Optionally a **maximum size** (the grid will not grow past it), a **default size** (how large it starts) and a **default value** (value of cells that were never written) |
+| `create grid` | creates a new, empty grid that grows on its own when cells are written. With **set default value** switched on, cells that were never written hold the chosen value instead of a space |
 | `set grid cell X Y of variable to value` | writes one cell. The value can be a number, text, true/false, an array, ... The grid grows when needed |
 | `variable get value at X Y` | reads one cell |
-| `reset variable` | clears the grid and returns it to its default size |
-| `serial write variable` | prints the grid in the serial output, one line per row. Cells without a value are printed as a space |
+| `reset variable` | removes every cell, the grid becomes empty again and grows again when cells are written. Cells that were never written keep the default value (or a space) |
+| `serial write variable` | prints the grid in the serial output, one line per row. Cells that were never written are printed as a space, or with the default value when one was set |
 
 Addresses start at `0`. The grid can live in a normal variable **or** in flash
 memory, all grid blocks work with both.
 
 Terminal messages of the Grids category:
 
-* `Cell address cant be under 0` - an x or y coordinate was under 0
-* `Out of set max grid range.` - the address is outside the maximum size that was set
+* `Cell address cant be under 0` - an x or y coordinate was under 0. An address under 0 is never written or read, so cells cannot be created there
 
 ### Flash Storage (own category, own colour and icon)
 
@@ -48,6 +47,13 @@ Terminal messages of the Grids category:
 | `delete flash variable` | removes the value from flash memory |
 | `reset flash variable` | sets the stored value back to `0` |
 | `clear flash memory` | clears everything this program saved in flash memory |
+
+**What do you type in `create flash variable`?** The name of the flash
+variable, for example `score`. The block does not store anything by itself:
+it returns the name as text, you keep it in a normal variable and use that
+variable in the other flash blocks. On the micro:bit the value is saved
+under the key `qoll_score` (letters, digits and `_` are kept, every other
+character becomes `_`).
 
 Typical use:
 
@@ -103,6 +109,11 @@ serial console of MakeCode) instead of silently doing the wrong thing:
 
 In the MakeCode editor: **Settings > Extensions** and paste the URL of this
 repository, or pick it from the gallery after it has been approved.
+
+**Updating an installed extension.** MakeCode caches extension code in the
+browser. After the files change, remove the extension (Extensions > your
+extension > trash icon), reload the editor (Ctrl+Shift+R) and add it again,
+otherwise the editor keeps using the old copy.
 
 ## Supported targets
 

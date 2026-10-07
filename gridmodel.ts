@@ -4,6 +4,12 @@
  * A grid is a normal value: store it in a regular variable with the
  * "set variable to" block, or keep it in flash memory with the
  * Flash Storage blocks so it survives a power cycle.
+ *
+ * The cells hold the value that was last written to them - the value of
+ * a cell the program never wrote is null. How cells without a value are
+ * printed is decided by the "create grid" block: with "set default value"
+ * every empty cell holds the chosen value, without it they are shown as
+ * a space. A cell can really only be written when its address is 0 or more.
  */
 namespace qoll {
     /** Text that is shown for a cell that holds no value. */
@@ -18,7 +24,8 @@ namespace qoll {
      * The space in front is there on purpose. pxt compiles the empty string
      * literal in `"" + value` into a call that crashes, because the empty
      * string is passed to the runtime without a value table. So the text is
-     * built with a space in front and the space is removed again afterwards.
+     * built with a space in front, and the space is removed again afterwards
+     * with charAt().
      * @param value the number to turn into text
      */
     function numberText(value: number): string {
@@ -267,7 +274,10 @@ namespace qoll {
             return new Grid()
         }
 
-        const grid = new Grid(raw.maxWidth, raw.maxHeight, raw.defaultWidth, raw.defaultHeight, raw.defaultValue)
+        // The maximum size that was stored by an older version of this
+        // extension is dropped on purpose: sizes are not a setting anymore,
+        // so a grid that comes back from flash memory grows freely again.
+        const grid = new Grid(0, 0, raw.defaultWidth, raw.defaultHeight, raw.defaultValue)
         const w = typeof raw.width === "number" && raw.width > 0 ? Math.floor(raw.width) : 0
         const h = typeof raw.height === "number" && raw.height > 0 ? Math.floor(raw.height) : 0
 
@@ -281,11 +291,6 @@ namespace qoll {
             grid.resizeTo(w, h)
         }
 
-        if ((grid.maxWidth > 0 && grid.width > grid.maxWidth)
-            || (grid.maxHeight > 0 && grid.height > grid.maxHeight)) {
-            report("Stored grid is bigger than the maximum size and has been reset.")
-            grid.reset()
-        }
         return grid
     }
 }

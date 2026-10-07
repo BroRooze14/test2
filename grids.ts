@@ -3,8 +3,9 @@
  * normal variable or in flash memory (Flash Storage category).
  *
  * Grid cells are addressed by an x (column) and a y (row) coordinate.
- * Both start at 0. Addresses under 0 and addresses outside of the maximum
- * size that was set while creating the grid are reported on the terminal.
+ * Both start at 0. Addresses under 0 are reported on the terminal. The grid
+ * grows on its own when a cell outside of it is written. A cell can really
+ * only be written when its address is 0 or more.
  */
 //% color="#1A237E" icon="\uf00a" block="Grids"
 namespace grids {
@@ -56,35 +57,22 @@ namespace grids {
     }
 
     /**
-     * Creates a new grid that can be stored in a variable.
+     * Creates a new empty grid that can be stored in a variable. The grid
+     * grows on its own when cells are written.
      *
-     * * maximum size: the grid refuses to grow past this size.
-     * * default size: the number of columns and rows the grid starts with.
      * * default value: the value of cells that were never written. When it is
      *   not used, empty cells are shown as a space.
-     * @param maxWidth maximum number of columns, 0 means unlimited
-     * @param maxHeight maximum number of rows, 0 means unlimited
-     * @param defaultWidth number of columns the grid starts with, 0 means empty
-     * @param defaultHeight number of rows the grid starts with, 0 means empty
      * @param useDefault when true the default value below is used
      * @param defaultValue value of cells that were never written
      */
     //% blockId=qoll_create_grid
-    //% block="create grid || maximum size $maxWidth by $maxHeight | default size $defaultWidth by $defaultHeight | set default value $useDefault to $defaultValue"
+    //% block="create grid || set default value $useDefault to $defaultValue"
     //% expandableArgumentMode="toggle"
-    //% maxWidth.defl=0 maxHeight.defl=0 defaultWidth.defl=0 defaultHeight.defl=0
     //% useDefault.shadow="logic_boolean"
     //% useDefault.defl=false
-    export function createGrid(maxWidth: number = 0, maxHeight: number = 0, defaultWidth: number = 0, defaultHeight: number = 0, useDefault: boolean = false, defaultValue?: any): qoll.Grid {
-        if (maxWidth < 0 || maxHeight < 0 || defaultWidth < 0 || defaultHeight < 0) {
-            qoll.report("Grid size cannot be under 0.")
-            if (maxWidth < 0) maxWidth = 0
-            if (maxHeight < 0) maxHeight = 0
-            if (defaultWidth < 0) defaultWidth = 0
-            if (defaultHeight < 0) defaultHeight = 0
-        }
+    export function createGrid(useDefault: boolean = false, defaultValue?: any): qoll.Grid {
         const fallback = useDefault ? defaultValue : undefined
-        return new qoll.Grid(maxWidth, maxHeight, defaultWidth, defaultHeight, fallback)
+        return new qoll.Grid(0, 0, 0, 0, fallback)
     }
 
     /**
@@ -137,9 +125,11 @@ namespace grids {
     }
 
     /**
-     * Prints a grid in the serial output, one line per row. Cells without a
-     * value are shown as a space. Works for grids in a normal variable and
-     * for grids that are kept in flash memory.
+     * Prints a grid in the serial output, one line per row. Every cell is
+     * printed with the value that was last written to it, and cells that the
+     * program never wrote are shown as a space (or with the default value
+     * that was chosen in "create grid"). Works for grids in a normal
+     * variable and for grids that are kept in flash memory.
      * @param variable the variable that holds the grid
      */
     //% blockId=qoll_serial_write_grid block="serial|write $variable"

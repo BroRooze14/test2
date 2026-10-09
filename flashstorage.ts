@@ -1,13 +1,14 @@
 /**
- * Flash Storage: blocks that store values in the flash memory of the
- * micro:bit, so the data is still there after the micro:bit is turned off.
+ * Flash Storage: files in the flash memory of the micro:bit, so the data
+ * is still there after the micro:bit is turned off.
  *
- * Workflow:
+ * Every block takes the name of the file typed straight into the block
+ * (or out of a variable that holds a name — both work). Example:
  *
- * 1. Give the flash variable a name once, in "on start":
- *    `set myKey to create flash variable "score"`.
- * 2. Store a value: `set flash myKey to 5`.
- * 3. Read it back (also after a power cycle): `get flash myKey`.
+ * 1. `set flash file "score" to 5`
+ * 2. turn the micro:bit off and on again
+ * 3. `get flash file "score"` returns 5
+ * 4. `list flash files` returns every name that this program stored
  *
  * Numbers, text, true/false, arrays and grids can all be stored. Every
  * value is packed into plain text by qollcodec before it is written, so
@@ -28,135 +29,155 @@ namespace flashstorage {
     const MAX_VALUE_LENGTH = 6000
 
     /**
-     * Creates the name of a flash variable.
-     *
-     * Store the result in a variable (the "set variable to" block) and use
-     * that variable in every other Flash Storage block.
-     * @param name the name of the flash variable
+     * Writes a value into a flash file. A file that exists already is
+     * overwritten. The value is kept when the micro:bit is turned off.
+     * @param name the name of the file (typed into the block)
+     * @param value the value to store (number, text, true/false, array, grid)
      */
-    //% blockId=qoll_flash_create block="create flash variable $name"
-    export function createFlashVariable(name: string): string {
-        if (name === undefined || name === null || name.length == 0) {
-            qoll.report("Flash variable name cannot be empty.")
-            // A space, and not empty text: an empty text cannot be handed to
-            // the runtime. keyFor() refuses a name without usable characters,
-            // so this never reaches flash memory.
-            return " "
-        }
-        return name
-    }
-
-    /**
-     * Names that blocks can receive are kept in variables, but a text
-     * typed straight into the slot has to work too. keyFor() checks the
-     * value and reports on the terminal what is wrong with it.
-     */
-
-    /**
-     * Stores a value in flash memory. The value is kept when the micro:bit
-     * is turned off.
-     * @param variable a variable that holds the name of the flash variable
-     * @param value the value to store (number, text, true/false, array or grid)
-     */
-    //% blockId=qoll_flash_set block="set flash $variable to $value"
-    //% variable.shadow="variables_get"
-    //% variable.defl="myKey"
-    export function setFlash(variable: any, value: any): void {
-        const key = keyFor(variable)
+    //% blockId=qoll_flash_set block="set flash file $name to $value"
+    //% name.defl="myfile"
+    export function setFlash(name: any, value: any): void {
+        const key = keyFor(name)
         if (!key) return
         writeValue(key, value)
     }
 
     /**
-     * Reads a value back from flash memory. Returns nothing when the flash
-     * variable was never written to.
-     * @param variable a variable that holds the name of the flash variable
+     * Reads a value back out of a flash file (also after a power cycle).
+     * Returns nothing when the file was never written to.
+     * @param name the name of the file (typed into the block)
      */
-    //% blockId=qoll_flash_get block="get flash $variable"
-    //% variable.shadow="variables_get"
-    //% variable.defl="myKey"
-    export function getFlash(variable: any): any {
-        const key = keyFor(variable)
+    //% blockId=qoll_flash_get block="get flash file $name"
+    //% name.defl="myfile"
+    export function getFlash(name: any): any {
+        const key = keyFor(name)
         if (!key) return undefined
         if (!settings.exists(key)) {
-            qoll.report("Flash variable has no stored value.")
+            qoll.report("Flash file has no stored value.")
             return undefined
         }
         return readValue(key)
     }
 
     /**
-     * Deletes a flash variable: its data is removed from the flash memory.
-     * @param variable a variable that holds the name of the flash variable
+     * Deletes a flash file: its data is removed from the flash memory.
+     * @param name the name of the file (typed into the block)
      */
-    //% blockId=qoll_flash_delete block="delete flash $variable"
-    //% variable.shadow="variables_get"
-    //% variable.defl="myKey"
-    export function deleteFlash(variable: any): void {
-        const key = keyFor(variable)
+    //% blockId=qoll_flash_delete block="delete flash file $name"
+    //% name.defl="myfile"
+    export function deleteFlash(name: any): void {
+        const key = keyFor(name)
         if (!key) return
         if (!settings.exists(key)) {
-            qoll.report("Flash variable does not exist.")
+            qoll.report("Flash file does not exist.")
             return
         }
         settings.remove(key)
-        qoll.report("Flash variable deleted.")
+        qoll.report("Flash file deleted.")
     }
 
     /**
-     * Resets a flash variable: the stored value is set back to 0, the flash
-     * variable itself stays.
-     * @param variable a variable that holds the name of the flash variable
+     * Resets a flash file: the stored value is set back to 0, the file
+     * itself stays.
+     * @param name the name of the file (typed into the block)
      */
-    //% blockId=qoll_flash_reset block="reset flash $variable"
-    //% variable.shadow="variables_get"
-    //% variable.defl="myKey"
-    export function resetFlash(variable: any): void {
-        const key = keyFor(variable)
+    //% blockId=qoll_flash_reset block="reset flash file $name"
+    //% name.defl="myfile"
+    export function resetFlash(name: any): void {
+        const key = keyFor(name)
         if (!key) return
         if (!settings.exists(key)) {
-            qoll.report("Flash variable does not exist.")
+            qoll.report("Flash file does not exist.")
             return
         }
         writeValue(key, 0)
-        qoll.report("Flash variable reset.")
+        qoll.report("Flash file reset.")
     }
 
     /**
-     * Creates a new array with the name of every flash variable that this
-     * program has stored a value for. Each name loses its leading qoll_.
-     * The names can be shown with the "print array" block, used with text
-     * blocks, or stored again with "set flash".
-     *
-     * A tip: this block does not return a value by itself, so use it with
-     * "set myArray to", then do something with myArray.
+     * True when the flash file exists (this program has stored a value
+     * for it).
+     * @param name the name of the file (typed into the block)
      */
-    //% blockId=qoll_flash_list block="list flash variables"
-    export function listFlashVariables(): string[] {
-        const keys = settings.list(KEY_PREFIX)
-        const names: string[] = []
-        if (keys) {
-            for (let i = 0; i < keys.length; i++) {
-                names.push(nameOf(keys[i]))
+    //% blockId=qoll_flash_has block="flash file $name exists"
+    //% name.defl="myfile"
+    export function hasFlash(name: any): boolean {
+        const key = keyFor(name)
+        if (!key) return false
+        return settings.exists(key)
+    }
+
+    /**
+     * Reads a flash file as one line of text, the way it is stored.
+     * Used to copy a file somewhere else with `set flash file` and to
+     * look at damaged data without crashing the program.
+     * @param name the name of the file (typed into the block)
+     */
+    //% blockId=qoll_flash_readtext block="read flash file $name as text"
+    //% name.defl="myfile"
+    export function readFlashText(name: any): string {
+        const key = keyFor(name)
+        if (!key) return ""
+        if (!settings.exists(key)) {
+            qoll.report("Flash file has no stored value.")
+            return ""
+        }
+        const stored = settings.readString(key)
+        return stored === undefined || stored === null ? "" : stored
+    }
+
+    /**
+     * Writes raw text into a flash file, packed the same way every other
+     * value is packed, so `get flash file` reads the text back as text.
+     * Same as `set flash file` with a text value.
+     * @param name the name of the file (typed into the block)
+     * @param text the text to store
+     */
+    //% blockId=qoll_flash_writetext block="write text $text into flash file $name"
+    //% name.defl="myfile"
+    export function writeFlashText(name: any, text: string): void {
+        setFlash(name, text === undefined || text === null ? "" : text)
+    }
+
+    /**
+     * Adds one text line at the end of a flash file that holds lines of
+     * text. A new line is started for every entry, the file can be read
+     * back line by line with `get flash file` (it becomes an array of
+     * the lines). Use `set flash file` with an empty array to start a
+     * fresh list of lines.
+     * @param name the name of the file (typed into the block)
+     * @param line the line of text to add at the end
+     */
+    //% blockId=qoll_flash_append block="append line $line to flash file $name"
+    //% name.defl="lines"
+    export function appendFlashLine(name: any, line: string): void {
+        const key = keyFor(name)
+        if (!key) return
+        const current: any[] = []
+        if (settings.exists(key)) {
+            const stored = readValue(key)
+            const box: any[] = [undefined]
+            if (qoll.tryAsArray(stored, box)) {
+                const items = box[0]
+                for (let i = 0; i < items.length; i++) current.push(items[i])
+            } else if (typeof stored === "string") {
+                // A file that so far held one text becomes a list of lines.
+                current.push(stored)
             }
         }
-        return names
+        current.push(line === undefined || line === null ? "" : line)
+        writeValue(key, current)
     }
 
     /**
-     * Turns a key back into the name of the flash variable: the text of
-     * the key after qoll_. Used when the names of the flash variables are
-     * listed.
+     * Creates a new array with the name of every flash file that this
+     * program has stored a value for. Each name loses its leading qoll_.
+     * The names can be shown with the "print array" block, or used as
+     * the name in another flash block.
      */
-    function nameOf(key: string): string {
-        // The prefix is always in front: keys of this program are found
-        // with it, so step over it with charAt().
-        const start = KEY_PREFIX.length
-        let name = ""
-        for (let i = start; i < key.length; i++) {
-            name += key.charAt(i)
-        }
-        return name
+    //% blockId=qoll_flash_list block="list flash files"
+    export function listFlashFiles(): string[] {
+        return listNames()
     }
 
     /**
@@ -173,23 +194,26 @@ namespace flashstorage {
                 removed++
             }
         }
-        qoll.report("Flash memory cleared. " + removed + " value(s) removed.")
+        qoll.report("Flash memory cleared. " + removed + " file(s) removed.")
     }
 
     /**
-     * Turns the value of a variable into the key that is used in flash
-     * memory. The variable has to hold the text name of the flash variable
-     * (see "create flash variable").
-     * @param value the text of the variable or slot that was picked
+     * Turns the value of a variable or slot into the key that is used in
+     * flash memory. The value has to be the text name of the file.
+     * @param value the text of the variable or slot that holds the name
      */
     export function keyFor(value: any): string {
+        if (value === undefined || value === null) {
+            qoll.report("A flash file name must be text.")
+            return ""
+        }
         if (typeof value !== "string") {
-            qoll.report("A flash variable must hold text. Use 'create flash variable' to make one.")
+            qoll.report("A flash file name must be text.")
             return ""
         }
         const raw: string = value
         if (raw.length == 0) {
-            qoll.report("Flash variable name cannot be empty.")
+            qoll.report("Flash file name cannot be empty.")
             return ""
         }
 
@@ -205,10 +229,25 @@ namespace flashstorage {
             key += allowed ? raw.charAt(i) : "_"
         }
         if (usable == 0) {
-            qoll.report("Flash variable name needs a letter, a digit or _.")
+            qoll.report("Flash file name needs a letter, a digit or _.")
             return ""
         }
         return key
+    }
+
+    /**
+     * Builds the name list that listFlashFiles() hands out. Separated so
+     * the Variables category can offer the same list.
+     */
+    export function listNames(): string[] {
+        const keys = settings.list(KEY_PREFIX)
+        const names: string[] = []
+        if (keys) {
+            for (let i = 0; i < keys.length; i++) {
+                names.push(nameOf(keys[i]))
+            }
+        }
+        return names
     }
 
     /** True when flash memory holds a value for this key. */
@@ -219,7 +258,7 @@ namespace flashstorage {
 
     /**
      * Removes a value from flash memory. Used by the "delete" block of the
-     * Variables category when the picked variable holds a flash variable.
+     * Variables category when the picked variable holds a file name.
      */
     export function deleteStored(key: string): void {
         if (!key) return
@@ -265,12 +304,26 @@ namespace flashstorage {
         }
         try {
             // decode() reports data it cannot read all by itself, and
-            // returns undefined then. It also returns undefined for a
-            // saved "empty" value, without a report, which is correct.
+            // returns undefined then.
             return qollcodec.decode(stored)
         } catch (e) {
             qoll.report("Value could not be read from flash memory.")
             return undefined
         }
+    }
+
+    /**
+     * Turns a key back into the name of the flash file: the text of the
+     * key after qoll_. Used when the names of the flash files are listed.
+     */
+    function nameOf(key: string): string {
+        // The prefix is always in front: keys of this program are found
+        // with it, so step over it with charAt().
+        const start = KEY_PREFIX.length
+        let name = ""
+        for (let i = start; i < key.length; i++) {
+            name += key.charAt(i)
+        }
+        return name
     }
 }

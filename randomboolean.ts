@@ -1,13 +1,10 @@
 /**
- * Random true or false generator, shown in the standard Logic category.
+ * The true or false generator of this extension was removed: the default
+ * true or false generator of the Logic category (`pick random true or
+ * false`) is kept instead, and both were the same thing.
+ *
+ * This file only stays behind so older programs that use the block keep
+ * loading. It adds no blocks any more.
  */
-//% blockNamespace="logic"
 namespace randomlogic {
-    /**
-     * Picks either true or false, both with the same chance.
-     */
-    //% blockId=qoll_random_boolean block="pick random true or false"
-    export function randomBoolean(): boolean {
-        return Math.randomRange(0, 1) === 1
-    }
 }

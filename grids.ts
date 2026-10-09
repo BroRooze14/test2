@@ -25,8 +25,10 @@ namespace grids {
     }
 
     /**
-     * Finds the grid that a variable points at. Returns nothing and reports
-     * the problem on the terminal when the variable does not hold a grid.
+     * Finds the grid that a slot points at. The slot can hold the grid
+     * itself (a variable), or the name of a flash file that keeps one.
+     * Returns nothing and reports the problem on the terminal when the
+     * slot does not point at a grid.
      */
     function resolve(value: any): GridRef {
         if (qoll.isGrid(value)) return new GridRef(value, "")
@@ -46,6 +48,10 @@ namespace grids {
         if (typeof value === "string") {
             const key = flashstorage.keyFor(value)
             if (!key) return null
+            if (!flashstorage.hasValue(key)) {
+                qoll.report("Selected variable does not hold a grid.")
+                return null
+            }
             const stored = flashstorage.readValue(key)
             if (qoll.isGrid(stored)) return new GridRef(stored, key)
             qoll.report("Selected variable does not hold a grid.")

@@ -1,8 +1,8 @@
 # Quality of Life Libraries (QoLLibraries)
 
-Quality of life blocks for **MakeCode for the micro:bit**: grids, random values,
-printing grids and arrays to the serial terminal, deleting variables and flash
-storage that survives a power cycle.
+Quality of life blocks for **MakeCode for the micro:bit**: grids, random
+values, printing grids and arrays to the serial terminal, deleting variables
+and flash **files** that survive a power cycle.
 
 Every feature lives in its own file (no giant `main.ts`):
 
@@ -11,11 +11,10 @@ Every feature lives in its own file (no giant `main.ts`):
 | `main.ts` | package overview only |
 | `errors.ts` | terminal / error reporting helpers |
 | `gridmodel.ts` | the grid data structure and its value helpers |
-| `codec.ts` | packs flash values into plain text (no JSON, see above) |
+| `codec.ts` | packs flash values into plain text (no JSON, see below) |
 | `grids.ts` | the **Grids** category |
-| `flashstorage.ts` | the **Flash Storage** category |
+| `flashstorage.ts` | the **Flash Storage** category (flash files) |
 | `randomcharacter.ts` | random character block (**Text**) |
-| `randomboolean.ts` | random true or false block (**Logic**) |
 | `variables.ts` | delete variable block (**Variables**) |
 | `serialprint.ts` | print an array to serial (**Arrays**) |
 
@@ -31,8 +30,9 @@ Every feature lives in its own file (no giant `main.ts`):
 | `reset variable` | removes every cell, the grid becomes empty again and grows again when cells are written. Cells that were never written keep the default value (or a space) |
 | `serial write variable` | prints the grid in the serial output, one line per row. Cells that were never written are printed as a space, or with the default value when one was set |
 
-Addresses start at `0`. The grid can live in a normal variable **or** in flash
-memory, all grid blocks work with both.
+Addresses start at `0`. The grid can live in a normal variable **or** in a
+flash file, all grid blocks work with both: type the file name into the
+variable slot, for example `serial write "score"`.
 
 Terminal messages of the Grids category: 
 
@@ -40,34 +40,38 @@ Terminal messages of the Grids category:
 
 ### Flash Storage (own category, own colour and icon)
 
+Every block takes the name of the flash file typed straight into the block —
+no "create" step, no extra variable needed (a variable that holds a name
+works too).
+
 | block | what it does |
 |-------|--------------|
-| `create flash variable name` | gives a flash variable its name, store the result in a normal variable |
-| `set flash variable to value` | writes the value into flash memory |
-| `get flash variable` | reads the value back from flash memory |
-| `delete flash variable` | removes the value from flash memory |
-| `reset flash variable` | sets the stored value back to `0` |
-| `list flash variables` | returns a new array with the name of every flash variable that this program has stored a value for. Use it with the `set myArray to` block: `set myNames to list flash variables` |
+| `set flash file to value` | writes the value into the file. A file that exists already is overwritten |
+| `get flash file` | reads the value back from the file (also after a power cycle) |
+| `flash file exists` | returns `true` when the file has a stored value |
+| `read flash file as text` | reads the file the way it is stored (packed text), for looking inside or copying a file |
+| `write text into flash file` | stores a text (same as `set flash file` with a text value) |
+| `append line to flash file` | adds one line of text at the end of a file that holds lines of text; reading it back gives an array of the lines |
+| `delete flash file` | removes the file from flash memory |
+| `reset flash file` | sets the stored value back to `0`, the file stays |
+| `list flash files` | returns a new array with the name of every file that this program stored: `set myNames to list flash files` |
 | `clear flash memory` | clears everything this program saved in flash memory |
 
-**What do you type in `create flash variable`?** The name of the flash
-variable, for example `score`. The block does not store anything by itself:
-it returns the name as text, you keep it in a normal variable and use that
-variable in the other flash blocks. On the micro:bit the value is saved
-under the key `qoll_score` (letters, digits and `_` are kept, every other
-character becomes `_`).
+**What do you type in the name slot?** The name of the file, for example
+`"score"`. On the micro:bit the value is saved under the key `qoll_score`
+(letters, digits and `_` are kept, every other character becomes `_`).
 
 Typical use:
 
-1. in `on start`: `set myKey to create flash variable "score"`
-2. `set flash myKey to 5`
-3. turn the micro:bit off and on again
-4. `get flash myKey` returns `5`
+1. `set flash file "score" to 5`
+2. turn the micro:bit off and on again
+3. `get flash file "score"` returns `5`
+4. `list flash files` returns `["score"]`
 
 Numbers, text, true/false, arrays and grids can all be stored, so the other
 blocks of this extension work together with the flash blocks (for example
-`set flash myKey to <create grid>`). Arrays and grids inside them are stored
-the same way, so lists of lists and grids inside arrays survive too.
+`set flash file "mygrid" to <create grid>`). Arrays and grids inside them are
+stored the same way, so lists of lists and grids inside arrays survive too.
 
 Why no JSON: MakeCode's `JSON.parse` returns values from another runtime
 world, and reading a property of them can crash the whole program with the
@@ -81,7 +85,7 @@ Two limits of the micro:bit flash file system to keep in mind:
 * one stored value is at most about 6000 characters, larger values are
   refused with a message on the terminal
 * the stored data belongs to the program: if you rename your program (or
-  start a new one and copy the code over), the flash variables start empty —
+  start a new one and copy the code over), the flash files start empty —
   MakeCode wipes flash values that were saved under another program name
   (`flashstorage.clearFlashMemory` does the same on purpose)
 
@@ -91,9 +95,11 @@ Two limits of the micro:bit flash file system to keep in mind:
 |----------|-------|--------------|
 | Text | `random character from characters` | one random character out of the given set. The default set is every letter (upper and lower case) and every digit |
 | Text | `default characters` | the default character set, handy to drag back into the block above |
-| Logic | `pick random true or false` | returns `true` or `false` |
-| Variables | `delete variable` | deletes the data of a variable of any kind (grid, array, flash variable, ...) |
+| Variables | `delete variable` | deletes the data of a variable of any kind (grid, array, flash file, ...) |
 | Arrays | `serial write array` | prints an array in the serial output, for example `[1, 2, 3]` |
+
+The true/false generator of this extension was removed: MakeCode's own
+**Logic** category already has `pick random true or false`, which is kept.
 
 ## Error handling
 
@@ -102,7 +108,8 @@ serial console of MakeCode) instead of silently doing the wrong thing:
 
 * coordinates under 0 and coordinates outside the maximum grid size
 * a picked variable that does not hold a grid / an array
-* flash variables that do not hold text, are empty or hold no value yet
+* flash file names that are empty or hold no usable character, and reads of
+  files that hold no value yet
 * flash values that are too large to store and flash data that is damaged
 * empty character sets
 * deleting a number or text value (see below)
@@ -115,7 +122,7 @@ serial console of MakeCode) instead of silently doing the wrong thing:
   loaded on a micro:bit V1.
 * **Deleting numbers and text.** A block only receives a *copy* of a number or
   of text, so `delete variable` cannot throw that value away by itself. It
-  empties arrays, resets grids and removes flash variables; for numbers and
+  empties arrays, resets grids and removes flash files; for numbers and
   text it prints how to clear the variable (`set variable to 0`).
 * **Where to find `delete variable`.** MakeCode builds the Variables drawer
   dynamically from the variables in your program, so third party blocks are not

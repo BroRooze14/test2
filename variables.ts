@@ -3,7 +3,7 @@
  *
  * A variable holds its data in the program, so data that lives inside an
  * object can be thrown away: arrays are emptied, grids are reset and flash
- * variables are removed from flash memory. Plain numbers and text cannot be
+ * files are removed from flash memory. Plain numbers and text cannot be
  * thrown away from a block (the block only receives a copy of the value),
  * so those cases explain on the terminal how to clear them.
  */
@@ -11,7 +11,7 @@
 namespace qollvars {
     /**
      * Deletes the data of a variable of any kind: a grid, an array, a flash
-     * variable, a number or text.
+     * file, a number or text.
      * @param variable the variable to delete
      */
     //% blockId=qoll_delete_variable block="delete $variable"
@@ -39,7 +39,7 @@ namespace qollvars {
             const key = flashstorage.keyFor(variable)
             if (key && flashstorage.hasValue(key)) {
                 flashstorage.deleteStored(key)
-                qoll.report("Flash variable deleted.")
+                qoll.report("Flash file deleted.")
                 return
             }
             qoll.report("Cannot delete a text value. Set the variable to an empty text instead.")

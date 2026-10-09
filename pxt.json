@@ -1,8 +1,8 @@
 {
     "name": "qollibraries",
-    "description": "Quality of Life Libraries (QoLLibraries): grids, random character and true/false, serial printing of grids/arrays and flash storage for MakeCode for the micro:bit.",
+    "description": "Quality of Life Libraries (QoLLibraries): grids, random character, serial printing of grids/arrays, variable deletion and flash files for MakeCode for the micro:bit.",
     "license": "MIT",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "dependencies": {
         "core": "*",
         "settings": "*"

@@ -11,13 +11,15 @@
  * * **Variables**: delete a variable of any kind (grid, array, text, number, flash variable, ...).
  * * **Arrays**: print an array to the serial output.
  * * **Flash Storage** (own category): store, read, delete and reset values in flash memory
- *   so they are kept when the micro:bit is turned off.
+ *   so they are kept when the micro:bit is turned off, and list every flash
+ *   variable this program has stored a value for.
  *
  * Every feature lives in its own file instead of everything being dumped in here:
  *
  * | file               | contents                                       |
  * |--------------------|------------------------------------------------|
  * | errors.ts          | terminal / error reporting helpers             |
+ * | codec.ts           | packs flash values into plain text (no JSON)   |
  * | gridmodel.ts       | the Grid data structure and its helpers        |
  * | grids.ts           | the "Grids" category blocks                    |
  * | flashstorage.ts    | the "Flash Storage" category blocks            |

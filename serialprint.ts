@@ -46,11 +46,15 @@ namespace qollarrays {
             qoll.report("Selected variable is not an array.")
             return
         }
-        if (!Array.isArray(list)) {
+        // Array.isArray cannot be used: simulator arrays are runtime
+        // objects, not native arrays. Ask the pxt runtime with a try/catch
+        // cast instead (see gridmodel.tryAsArray).
+        const listBox: any[] = [undefined]
+        if (!qoll.tryAsArray(list, listBox)) {
             qoll.report("Selected variable is not an array.")
             return
         }
 
-        serial.writeLine(arrayText(list))
+        serial.writeLine(arrayText(listBox[0]))
     }
 }

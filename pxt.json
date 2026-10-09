@@ -12,6 +12,7 @@
         "LICENSE",
         "main.ts",
         "errors.ts",
+        "codec.ts",
         "gridmodel.ts",
         "grids.ts",
         "flashstorage.ts",

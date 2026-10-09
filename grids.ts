@@ -31,6 +31,13 @@ namespace grids {
     function resolve(value: any): GridRef {
         if (qoll.isGrid(value)) return new GridRef(value, "")
 
+        // Arrays carry their own tell: one element read must succeed.
+        const listBox: any[] = [undefined]
+        if (qoll.tryAsArray(value, listBox)) {
+            qoll.report("Selected variable is not a grid.")
+            return null
+        }
+
         if (value === undefined || value === null) {
             qoll.report("Selected variable is empty. Set it to a grid first.")
             return null
@@ -72,7 +79,7 @@ namespace grids {
     //% useDefault.defl=false
     export function createGrid(useDefault: boolean = false, defaultValue?: any): qoll.Grid {
         const fallback = useDefault ? defaultValue : undefined
-        return new qoll.Grid(0, 0, 0, 0, fallback)
+        return qoll.newGrid(useDefault, fallback)
     }
 
     /**

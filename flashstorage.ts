@@ -9,7 +9,14 @@
  * 2. Store a value: `set flash myKey to 5`.
  * 3. Read it back (also after a power cycle): `get flash myKey`.
  *
- * Numbers, text, true/false, arrays and grids can all be stored.
+ * Numbers, text, true/false, arrays and grids can all be stored. Every
+ * value is packed into plain text by qollcodec before it is written, so
+ * the stored data never needs JSON (see codec.ts why JSON is unsafe here).
+ *
+ * The data is saved under a key of `qoll_` plus the name. The flash
+ * memory is a part of the micro:bit file system, so a name is a file
+ * name: it becomes at most 28 sign long, and characters that a file name
+ * does not allow become _.
  */
 //% color="#AD1457" icon="\uf0c7" block="Flash Storage"
 namespace flashstorage {
@@ -38,6 +45,12 @@ namespace flashstorage {
         }
         return name
     }
+
+    /**
+     * Names that blocks can receive are kept in variables, but a text
+     * typed straight into the slot has to work too. keyFor() checks the
+     * value and reports on the terminal what is wrong with it.
+     */
 
     /**
      * Stores a value in flash memory. The value is kept when the micro:bit
@@ -110,6 +123,43 @@ namespace flashstorage {
     }
 
     /**
+     * Creates a new array with the name of every flash variable that this
+     * program has stored a value for. Each name loses its leading qoll_.
+     * The names can be shown with the "print array" block, used with text
+     * blocks, or stored again with "set flash".
+     *
+     * A tip: this block does not return a value by itself, so use it with
+     * "set myArray to", then do something with myArray.
+     */
+    //% blockId=qoll_flash_list block="list flash variables"
+    export function listFlashVariables(): string[] {
+        const keys = settings.list(KEY_PREFIX)
+        const names: string[] = []
+        if (keys) {
+            for (let i = 0; i < keys.length; i++) {
+                names.push(nameOf(keys[i]))
+            }
+        }
+        return names
+    }
+
+    /**
+     * Turns a key back into the name of the flash variable: the text of
+     * the key after qoll_. Used when the names of the flash variables are
+     * listed.
+     */
+    function nameOf(key: string): string {
+        // The prefix is always in front: keys of this program are found
+        // with it, so step over it with charAt().
+        const start = KEY_PREFIX.length
+        let name = ""
+        for (let i = start; i < key.length; i++) {
+            name += key.charAt(i)
+        }
+        return name
+    }
+
+    /**
      * Completely clears the part of the flash memory that this program saved.
      * Data of other extensions (for example the data logger) is kept.
      */
@@ -130,7 +180,7 @@ namespace flashstorage {
      * Turns the value of a variable into the key that is used in flash
      * memory. The variable has to hold the text name of the flash variable
      * (see "create flash variable").
-     * @param value the value of the variable that was picked
+     * @param value the text of the variable or slot that was picked
      */
     export function keyFor(value: any): string {
         if (typeof value !== "string") {
@@ -183,70 +233,44 @@ namespace flashstorage {
      */
     export function writeValue(key: string, value: any): void {
         if (!key) return
+        let text: string
         try {
-            const payload = encode(value)
-            const text = JSON.stringify(payload)
-            if (text === undefined || text === null) {
-                qoll.report("Value could not be saved to flash memory.")
-                return
-            }
-            if (text.length > MAX_VALUE_LENGTH) {
-                qoll.report("Value is too large to store in flash memory.")
-                return
-            }
-            settings.writeJSON(key, payload)
+            text = qollcodec.encode(value)
         } catch (e) {
             qoll.report("Value could not be saved to flash memory.")
+            return
         }
+        if (!text) {
+            qoll.report("Value could not be saved to flash memory.")
+            return
+        }
+        if (text.length > MAX_VALUE_LENGTH) {
+            qoll.report("Value is too large to store in flash memory.")
+            return
+        }
+        settings.writeString(key, text)
     }
 
     /**
-     * Reads a value back from flash memory. Damaged data is reported on the
-     * terminal and nothing is returned.
+     * Reads a value back from flash memory. Damaged data is reported on
+     * the terminal and nothing is returned.
      */
     export function readValue(key: string): any {
         if (!key) return undefined
         if (!settings.exists(key)) return undefined
+        const stored = settings.readString(key)
+        if (stored === undefined || stored === null) {
+            qoll.report("Value could not be read from flash memory.")
+            return undefined
+        }
         try {
-            return decode(settings.readJSON(key))
+            // decode() reports data it cannot read all by itself, and
+            // returns undefined then. It also returns undefined for a
+            // saved "empty" value, without a report, which is correct.
+            return qollcodec.decode(stored)
         } catch (e) {
             qoll.report("Value could not be read from flash memory.")
             return undefined
         }
-    }
-
-    /** Tags a value with its kind so it can be restored later. */
-    function encode(value: any): any {
-        if (value === undefined || value === null) return { kind: "empty" }
-        if (typeof value === "boolean") return { kind: "boolean", body: value }
-        if (typeof value === "number") return { kind: "number", body: value }
-        if (typeof value === "string") return { kind: "text", body: value }
-        if (qoll.isGrid(value)) return { kind: "grid", body: qoll.gridToPlain(value) }
-        if (Array.isArray(value)) return { kind: "array", body: value }
-        qoll.report("This value cannot be stored in flash memory.")
-        return { kind: "empty" }
-    }
-
-    /** Restores a value that was written by encode(). */
-    function decode(raw: any): any {
-        if (raw === undefined || raw === null || typeof raw !== "object") {
-            qoll.report("Stored flash value is damaged.")
-            return undefined
-        }
-
-        const kind: string = raw.kind
-        const body: any = raw.body
-
-        if (kind == "number" || kind == "text" || kind == "boolean") return body
-        if (kind == "empty") return undefined
-        if (kind == "array") {
-            if (Array.isArray(body)) return body
-            qoll.report("Stored flash value is damaged.")
-            return undefined
-        }
-        if (kind == "grid") return qoll.gridFromPlain(body)
-
-        qoll.report("Stored flash value is damaged.")
-        return undefined
     }
 }

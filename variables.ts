@@ -23,8 +23,10 @@ namespace qollvars {
             return
         }
 
-        if (Array.isArray(variable)) {
-            while (variable.length > 0) variable.pop()
+        const listBox: any[] = [undefined]
+        if (qoll.tryAsArray(variable, listBox)) {
+            const list = listBox[0]
+            while (list.length > 0) list.pop()
             return
         }
 

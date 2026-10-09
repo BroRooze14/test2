@@ -2,30 +2,32 @@
  * The data structure behind the "Grids" category.
  *
  * A grid is a normal value: store it in a regular variable with the
- * "set variable to" block, or keep it in flash memory with the
- * Flash Storage blocks so it survives a power cycle.
+ * "set variable to" block, or keep it in flash memory with the Flash
+ * Storage blocks so it survives a power cycle.
  *
- * The cells hold the value that was last written to them - the value of
- * a cell the program never wrote is null. How cells without a value are
- * printed is decided by the "create grid" block: with "set default value"
- * every empty cell holds the chosen value, without it they are shown as
- * a space. A cell can really only be written when its address is 0 or more.
+ * Two pxt pitfalls shape this file:
+ *
+ * - Property reads on values typed as "any" are compiled into a runtime
+ *   dispatch that crashes on values without a class table (the popular
+ *   "reading 'iface'" error). So no code here reads members of unknown
+ *   values. Grids are recognised by identity: every grid that is created
+ *   or restored is put into a list, and isGrid() looks the value up in
+ *   that list with plain ===. That works in the simulator and on the
+ *   micro:bit and can never crash.
  */
 namespace qoll {
     /** Text that is shown for a cell that holds no value. */
     const EMPTY_CELL = " "
-
-    /** Marker written into every grid, so grids can be told apart from other objects. */
-    const GRID_TYPE_TAG = "grid"
+    /** Every grid created or restored during this run, used by isGrid(). */
+    const gridRegistry: any[] = []
 
     /**
      * Turns a number into text.
      *
-     * The space in front is there on purpose. pxt compiles the empty string
-     * literal in `"" + value` into a call that crashes, because the empty
-     * string is passed to the runtime without a value table. So the text is
-     * built with a space in front, and the space is removed again afterwards
-     * with charAt().
+     * The space in front is there on purpose. pxt compiles `"" + value`
+     * into a runtime call that crashes on some values, so the text is
+     * built with a space in front and the space is removed again with
+     * charAt().
      * @param value the number to turn into text
      */
     function numberText(value: number): string {
@@ -35,6 +37,42 @@ namespace qoll {
         return out
     }
 
+    /**
+     * True when the value is an array.
+     *
+     * Array.isArray cannot be used here: in the simulator pxt arrays are
+     * objects of a runtime class, not native arrays, so Array.isArray
+     * says false there and every array would be treated as an object.
+     * Instead the value is cast to an array type inside try/catch, so the
+     * pxt runtime itself is asked — it answers with a catchable cast
+     * error for every value that is not an array. The cast writes the
+     * array into out[0] exactly when it is one.
+     * @param value the value to check
+     * @param out writes the value as an array into out[0] when true
+     */
+    export function tryAsArray(value: any, out: any[]): boolean {
+        if (value === undefined || value === null) return false
+        // Numbers, text and true/false can be iterated over in a plain for
+        // loop without an error, so the probe below cannot tell them from
+        // arrays. Only an object of some kind can be an array.
+        if (typeof value !== "object") return false
+        // A grid is never an array. Check the registry first, with plain ===,
+        // because the cast probe below can not tell a grid from an object
+        // that simply has no length (the loop just runs zero times there).
+        for (let i = 0; i < gridRegistry.length; i++) {
+            if (gridRegistry[i] === value) return false
+        }
+        try {
+            const list = value as any[]
+            let probe = 0
+            for (let i = 0; i < list.length; i++) probe++
+            out[0] = list
+            return true
+        } catch (e) {
+            return false
+        }
+    }
+
     /** Turns a value into the text that is printed for it. */
     export function textOf(value: any): string {
         if (value === undefined || value === null) return "null"
@@ -42,8 +80,24 @@ namespace qoll {
         if (typeof value === "number") return numberText(value)
         if (typeof value === "boolean") return value ? "true" : "false"
         if (isGrid(value)) return "[grid]"
-        if (Array.isArray(value)) return JSON.stringify(value)
+        const listBox: any[] = [undefined]
+        if (tryAsArray(value, listBox)) return arrayText(listBox[0])
         return "[object]"
+    }
+
+    /** Renders a list as text, for example ["a", 2]. Used by more files. */
+    export function arrayText(list: any[]): string {
+        let out = "["
+        for (let i = 0; i < list.length; i++) {
+            if (i > 0) out += ", "
+            const item = list[i]
+            if (item !== undefined && item !== null && typeof item === "string") {
+                out += "\"" + item + "\""
+            } else {
+                out += textOf(item)
+            }
+        }
+        return out + "]"
     }
 
     /**
@@ -53,39 +107,37 @@ namespace qoll {
     export function cellText(value: any): string {
         if (value === undefined || value === null) return EMPTY_CELL
         const text = textOf(value)
-        // A cell that holds empty text is shown as a space too: an empty text
-        // cannot be handed to the runtime, so it would break the printing.
+        // A cell that holds empty text is shown as a space too: empty text
+        // would break the runtime, so it is never used.
         if (!text) return EMPTY_CELL
         return text
-    }
-
-    /** Reads a size setting; missing, null and negative sizes become 0. */
-    function sizeOf(value: number): number {
-        if (value === undefined || value === null) return 0
-        if (value <= 0) return 0
-        return Math.floor(value)
     }
 
     /**
      * True when the value is a grid.
      *
-     * instanceof is not used here on purpose: values that come back from
-     * flash memory are plain objects without a class table, and asking such
-     * an object for its class table crashes the runtime instead of simply
-     * answering false.
+     * Grids are known by identity (see the note at the top of the file):
+     * instanceof would crash on some values, and reading a marker field
+     * of an unknown value can crash too.
      * @param value the value to check
      */
     export function isGrid(value: any): boolean {
-        if (!value) return false
-        return typeof value === "object" && value.gridType == GRID_TYPE_TAG
+        if (value === undefined || value === null || typeof value !== "object") return false
+        const listBox: any[] = [undefined]
+        if (tryAsArray(value, listBox)) return false
+        for (let i = 0; i < gridRegistry.length; i++) {
+            if (gridRegistry[i] === value) return true
+        }
+        return false
     }
 
-    /**
-     * A two dimensional grid.
-     *
-     * The grid grows automatically when a cell outside of the current size is
-     * written, unless a maximum size was set when the grid was created.
-     */
+    /** Remembers a grid so isGrid() can recognise it later. */
+    export function registerGrid(grid: Grid): Grid {
+        gridRegistry.push(grid)
+        return grid
+    }
+
+    /** A two dimensional grid of cells. It grows when cells are written. */
     export class Grid {
         /** Cell values, stored row by row (width entries per row). */
         cells: any[]
@@ -93,72 +145,41 @@ namespace qoll {
         width: number
         /** Number of rows that currently exist. */
         height: number
-        /** Maximum number of columns, 0 means unlimited. */
-        maxWidth: number
-        /** Maximum number of rows, 0 means unlimited. */
-        maxHeight: number
-        /** Number of columns the grid is restored to by reset(), 0 means empty. */
-        defaultWidth: number
-        /** Number of rows the grid is restored to by reset(), 0 means empty. */
-        defaultHeight: number
-        /** Value of cells that were never written, null when no default was set. */
+        /** Value of cells that were never written, null when none was set. */
         defaultValue: any
-        /** Marker that marks this object as a grid. Not part of the saved data. */
-        gridType: string
+        /** True when a default value was chosen in "create grid". */
+        hasDefault: boolean
 
         /**
-         * Creates a grid.
-         * @param maxWidth maximum number of columns, 0 for unlimited
-         * @param maxHeight maximum number of rows, 0 for unlimited
-         * @param defaultWidth number of columns the grid starts with, 0 to start empty
-         * @param defaultHeight number of rows the grid starts with, 0 to start empty
+         * Creates an empty grid that grows when cells are written.
+         * @param hasDefault true when a default value was chosen
          * @param defaultValue value of cells that were never written
          */
-        constructor(maxWidth?: number, maxHeight?: number, defaultWidth?: number, defaultHeight?: number, defaultValue?: any) {
-            this.maxWidth = sizeOf(maxWidth)
-            this.maxHeight = sizeOf(maxHeight)
-            this.defaultWidth = sizeOf(defaultWidth)
-            this.defaultHeight = sizeOf(defaultHeight)
-            this.defaultValue = defaultValue === undefined || defaultValue === null ? null : defaultValue
-            this.gridType = GRID_TYPE_TAG
+        constructor(hasDefault: boolean, defaultValue?: any) {
             this.cells = []
             this.width = 0
             this.height = 0
-
-            if (this.maxWidth > 0 && this.defaultWidth > this.maxWidth) {
-                report("Default grid size is bigger than the maximum size.")
-                this.defaultWidth = this.maxWidth
+            if (hasDefault && defaultValue !== undefined) {
+                this.hasDefault = true
+                this.defaultValue = defaultValue
+            } else {
+                this.hasDefault = false
+                this.defaultValue = null
             }
-            if (this.maxHeight > 0 && this.defaultHeight > this.maxHeight) {
-                report("Default grid size is bigger than the maximum size.")
-                this.defaultHeight = this.maxHeight
-            }
-            if (this.defaultWidth > 0 && this.defaultHeight > 0)
-                this.resizeTo(this.defaultWidth, this.defaultHeight)
         }
 
         /**
-         * Returns "" when the address is allowed, otherwise the message that
-         * has to be written to the terminal for that address.
-         */
-        checkAddress(x: number, y: number): string {
-            if (x < 0 || y < 0) return "Cell address cant be under 0"
-            if (this.maxWidth > 0 && x >= this.maxWidth) return "Out of set max grid range."
-            if (this.maxHeight > 0 && y >= this.maxHeight) return "Out of set max grid range."
-            return ""
-        }
-
-        /**
-         * Grows the grid until a grid of w by h cells fits. Existing cells keep
-         * their value, new cells get the default value.
+         * Grows the grid until a grid of w by h cells fits. Existing cells
+         * keep their value, new cells get the default value.
          */
         resizeTo(w: number, h: number): void {
             const newWidth = w > this.width ? w : this.width
             const newHeight = h > this.height ? h : this.height
             if (newWidth <= 0 || newHeight <= 0) return
 
+            const fill = this.hasDefault ? this.defaultValue : null
             const next: any[] = []
-            for (let i = 0; i < newWidth * newHeight; i++) next.push(this.defaultValue)
+            for (let i = 0; i < newWidth * newHeight; i++) next.push(fill)
 
             for (let y = 0; y < this.height && y < newHeight; y++) {
                 for (let x = 0; x < this.width && x < newWidth; x++) {
@@ -172,29 +193,27 @@ namespace qoll {
         }
 
         /**
-         * Reads a cell. Invalid addresses are reported on the terminal and the
-         * default value of the grid is returned instead.
+         * Reads a cell. The grid behaves as an endless field: cells outside
+         * of the grown part read as the default value. Only addresses under
+         * 0 are impossible.
          */
         getCell(x: number, y: number): any {
-            const problem = this.checkAddress(x, y)
-            if (problem) {
-                report(problem)
-                return this.defaultValue
+            if (x < 0 || y < 0) {
+                report("Cell address cant be under 0")
+                return null
             }
-            if (x < this.width && y < this.height)
-                return this.cells[y * this.width + x]
-            return this.defaultValue
+            if (x < this.width && y < this.height) return this.cells[y * this.width + x]
+            return this.hasDefault ? this.defaultValue : null
         }
 
         /**
-         * Writes a cell. The grid grows when needed. Invalid addresses are
-         * reported on the terminal and nothing is written.
+         * Writes a cell. The grid grows when needed. Addresses under 0 are
+         * never written, so cells cannot start there.
          * @returns true when the cell was written
          */
         setCell(x: number, y: number, value: any): boolean {
-            const problem = this.checkAddress(x, y)
-            if (problem) {
-                report(problem)
+            if (x < 0 || y < 0) {
+                report("Cell address cant be under 0")
                 return false
             }
             if (x >= this.width || y >= this.height) this.resizeTo(x + 1, y + 1)
@@ -202,18 +221,17 @@ namespace qoll {
             return true
         }
 
-        /** Clears every cell and returns the grid to its default size. */
+        /** Removes every cell. The grid becomes empty and grows again when cells are written. */
         reset(): void {
+            this.cells = []
             this.width = 0
             this.height = 0
-            this.cells = []
-            if (this.defaultWidth > 0 && this.defaultHeight > 0)
-                this.resizeTo(this.defaultWidth, this.defaultHeight)
         }
 
         /**
-         * Renders the whole grid as text: one line per row, one column per
-         * column. Cells without a value show up as a space.
+         * Renders the whole grid as text: one line per row. Cells that were
+         * never written show up as a space (or the default value that was
+         * chosen when the grid was created).
          */
         format(): string {
             if (this.width <= 0 || this.height <= 0) return "(empty grid)"
@@ -234,8 +252,9 @@ namespace qoll {
                 for (let x = 0; x < this.width; x++) {
                     if (x > 0) out += " "
                     let text = cellText(this.cells[y * this.width + x])
-                    if (x + 1 < this.width)
+                    if (x + 1 < this.width) {
                         while (text.length < columnWidth[x]) text += " "
+                    }
                     out += text
                 }
             }
@@ -243,54 +262,8 @@ namespace qoll {
         }
     }
 
-    /**
-     * Turns a grid into a plain object so it can be written to flash memory.
-     */
-    export function gridToPlain(grid: any): any {
-        if (isGrid(grid)) return {
-            maxWidth: grid.maxWidth,
-            maxHeight: grid.maxHeight,
-            defaultWidth: grid.defaultWidth,
-            defaultHeight: grid.defaultHeight,
-            defaultValue: grid.defaultValue,
-            width: grid.width,
-            height: grid.height,
-            cells: grid.cells
-        }
-        return null
-    }
-
-    /**
-     * Rebuilds a grid from the plain object that was read back from flash
-     * memory. Damaged data is reported on the terminal and repaired.
-     *
-     * The cells are copied one by one into a real array. The data that comes
-     * back from flash memory is a plain list made by JSON.parse, and such a
-     * list must not be kept as the grid's cell storage.
-     */
-    export function gridFromPlain(raw: any): Grid {
-        if (raw === undefined || raw === null || typeof raw !== "object") {
-            report("Stored grid data was damaged and has been reset.")
-            return new Grid()
-        }
-
-        // The maximum size that was stored by an older version of this
-        // extension is dropped on purpose: sizes are not a setting anymore,
-        // so a grid that comes back from flash memory grows freely again.
-        const grid = new Grid(0, 0, raw.defaultWidth, raw.defaultHeight, raw.defaultValue)
-        const w = typeof raw.width === "number" && raw.width > 0 ? Math.floor(raw.width) : 0
-        const h = typeof raw.height === "number" && raw.height > 0 ? Math.floor(raw.height) : 0
-
-        if (w > 0 && h > 0 && Array.isArray(raw.cells) && raw.cells.length == w * h) {
-            grid.width = w
-            grid.height = h
-            grid.cells = []
-            for (let i = 0; i < raw.cells.length; i++) grid.cells.push(raw.cells[i])
-        } else if (w > 0 && h > 0) {
-            report("Stored grid data was damaged and has been repaired.")
-            grid.resizeTo(w, h)
-        }
-
-        return grid
+    /** Creates a new empty grid and remembers it. Used by the block. */
+    export function newGrid(hasDefault: boolean, defaultValue: any): Grid {
+        return registerGrid(new Grid(hasDefault, defaultValue))
     }
 }

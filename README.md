@@ -10,7 +10,8 @@ Every feature lives in its own file (no giant `main.ts`):
 |------|----------|
 | `main.ts` | package overview only |
 | `errors.ts` | terminal / error reporting helpers |
-| `gridmodel.ts` | the grid data structure |
+| `gridmodel.ts` | the grid data structure and its value helpers |
+| `codec.ts` | packs flash values into plain text (no JSON, see above) |
 | `grids.ts` | the **Grids** category |
 | `flashstorage.ts` | the **Flash Storage** category |
 | `randomcharacter.ts` | random character block (**Text**) |
@@ -33,7 +34,7 @@ Every feature lives in its own file (no giant `main.ts`):
 Addresses start at `0`. The grid can live in a normal variable **or** in flash
 memory, all grid blocks work with both.
 
-Terminal messages of the Grids category:
+Terminal messages of the Grids category: 
 
 * `Cell address cant be under 0` - an x or y coordinate was under 0. An address under 0 is never written or read, so cells cannot be created there
 
@@ -46,6 +47,7 @@ Terminal messages of the Grids category:
 | `get flash variable` | reads the value back from flash memory |
 | `delete flash variable` | removes the value from flash memory |
 | `reset flash variable` | sets the stored value back to `0` |
+| `list flash variables` | returns a new array with the name of every flash variable that this program has stored a value for. Use it with the `set myArray to` block: `set myNames to list flash variables` |
 | `clear flash memory` | clears everything this program saved in flash memory |
 
 **What do you type in `create flash variable`?** The name of the flash
@@ -64,7 +66,24 @@ Typical use:
 
 Numbers, text, true/false, arrays and grids can all be stored, so the other
 blocks of this extension work together with the flash blocks (for example
-`set flash myKey to <create grid>`).
+`set flash myKey to <create grid>`). Arrays and grids inside them are stored
+the same way, so lists of lists and grids inside arrays survive too.
+
+Why no JSON: MakeCode's `JSON.parse` returns values from another runtime
+world, and reading a property of them can crash the whole program with the
+terrible `Cannot read properties of undefined (reading 'iface')` error (it
+broke grids in the simulator). Every value is packed into plain text with a
+small escape format instead, and unpacked into fresh, safe values when it is
+read back.
+
+Two limits of the micro:bit flash file system to keep in mind:
+
+* one stored value is at most about 6000 characters, larger values are
+  refused with a message on the terminal
+* the stored data belongs to the program: if you rename your program (or
+  start a new one and copy the code over), the flash variables start empty —
+  MakeCode wipes flash values that were saved under another program name
+  (`flashstorage.clearFlashMemory` does the same on purpose)
 
 ### Other categories
 

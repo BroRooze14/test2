@@ -36,7 +36,7 @@ namespace flashstorage {
      */
     //% blockId=qoll_flash_set block="set flash file $name to $value"
     //% name.defl="myfile"
-    export function setFlash(name: any, value: any): void {
+    export function setFlash(name: string, value: any): void {
         const key = keyFor(name)
         if (!key) return
         writeValue(key, value)
@@ -49,7 +49,7 @@ namespace flashstorage {
      */
     //% blockId=qoll_flash_get block="get flash file $name"
     //% name.defl="myfile"
-    export function getFlash(name: any): any {
+    export function getFlash(name: string): any {
         const key = keyFor(name)
         if (!key) return undefined
         if (!settings.exists(key)) {
@@ -65,7 +65,7 @@ namespace flashstorage {
      */
     //% blockId=qoll_flash_delete block="delete flash file $name"
     //% name.defl="myfile"
-    export function deleteFlash(name: any): void {
+    export function deleteFlash(name: string): void {
         const key = keyFor(name)
         if (!key) return
         if (!settings.exists(key)) {
@@ -83,7 +83,7 @@ namespace flashstorage {
      */
     //% blockId=qoll_flash_reset block="reset flash file $name"
     //% name.defl="myfile"
-    export function resetFlash(name: any): void {
+    export function resetFlash(name: string): void {
         const key = keyFor(name)
         if (!key) return
         if (!settings.exists(key)) {
@@ -101,7 +101,7 @@ namespace flashstorage {
      */
     //% blockId=qoll_flash_has block="flash file $name exists"
     //% name.defl="myfile"
-    export function hasFlash(name: any): boolean {
+    export function hasFlash(name: string): boolean {
         const key = keyFor(name)
         if (!key) return false
         return settings.exists(key)
@@ -115,7 +115,7 @@ namespace flashstorage {
      */
     //% blockId=qoll_flash_readtext block="read flash file $name as text"
     //% name.defl="myfile"
-    export function readFlashText(name: any): string {
+    export function readFlashText(name: string): string {
         const key = keyFor(name)
         if (!key) return ""
         if (!settings.exists(key)) {
@@ -135,7 +135,7 @@ namespace flashstorage {
      */
     //% blockId=qoll_flash_writetext block="write text $text into flash file $name"
     //% name.defl="myfile"
-    export function writeFlashText(name: any, text: string): void {
+    export function writeFlashText(name: string, text: string): void {
         setFlash(name, text === undefined || text === null ? "" : text)
     }
 
@@ -150,7 +150,7 @@ namespace flashstorage {
      */
     //% blockId=qoll_flash_append block="append line $line to flash file $name"
     //% name.defl="lines"
-    export function appendFlashLine(name: any, line: string): void {
+    export function appendFlashLine(name: string, line: string): void {
         const key = keyFor(name)
         if (!key) return
         const current: any[] = []
